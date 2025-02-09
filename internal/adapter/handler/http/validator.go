@@ -5,12 +5,11 @@ import (
 	"github.com/murilo05/JobScheduler/internal/core/domain"
 )
 
-// userRoleValidator is a custom validator for validating user roles
 var userRoleValidator validator.Func = func(fl validator.FieldLevel) bool {
 	userRole := fl.Field().Interface().(domain.UserRole)
 
 	switch userRole {
-	case "admin", "cashier":
+	case "admin", "customer":
 		return true
 	default:
 		return false

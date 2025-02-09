@@ -1,6 +1,7 @@
 package http
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -9,15 +10,11 @@ import (
 )
 
 const (
-	// authorizationHeaderKey is the key for authorization header in the request
-	authorizationHeaderKey = "authorization"
-	// authorizationType is the accepted authorization type
-	authorizationType = "bearer"
-	// authorizationPayloadKey is the key for authorization payload in the context
+	authorizationHeaderKey  = "authorization"
+	authorizationType       = "bearer"
 	authorizationPayloadKey = "authorization_payload"
 )
 
-// authMiddleware is a middleware to check if the user is authenticated
 func authMiddleware(token ports.TokenService) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		authorizationHeader := ctx.GetHeader(authorizationHeaderKey)
@@ -56,10 +53,10 @@ func authMiddleware(token ports.TokenService) gin.HandlerFunc {
 	}
 }
 
-// adminMiddleware is a middleware to check if the user is an admin
 func adminMiddleware() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		payload := getAuthPayload(ctx, authorizationPayloadKey)
+		fmt.Println("Payload", payload)
 
 		isAdmin := payload.Role == domain.Admin
 		if !isAdmin {

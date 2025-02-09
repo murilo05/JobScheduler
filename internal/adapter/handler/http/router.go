@@ -52,6 +52,18 @@ func NewRouter(
 		{
 			user.POST("/", userHandler.Register)
 			user.POST("/login", authHandler.Login)
+
+			authUser := user.Group("/").Use(authMiddleware(token))
+			{
+				//authUser.GET("/", userHandler.ListUsers)
+				//authUser.GET("/:id", userHandler.GetUser)
+
+				admin := authUser.Use(adminMiddleware())
+				{
+					admin.PUT("/:id", userHandler.UpdateUser)
+					admin.DELETE("/:id", userHandler.DeleteUser)
+				}
+			}
 		}
 	}
 

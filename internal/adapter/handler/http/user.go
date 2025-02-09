@@ -4,23 +4,20 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/murilo05/JobScheduler/internal/core/domain"
 	"github.com/murilo05/JobScheduler/internal/core/ports"
-	_ "github.com/swaggo/files"       // swagger embed files
-	_ "github.com/swaggo/gin-swagger" // gin-swagger middleware
+	_ "github.com/swaggo/files"
+	_ "github.com/swaggo/gin-swagger"
 )
 
-// UserHandler represents the HTTP handler for user-related requests
 type UserHandler struct {
 	svc ports.UserService
 }
 
-// NewUserHandler creates a new UserHandler instance
 func NewUserHandler(svc ports.UserService) *UserHandler {
 	return &UserHandler{
 		svc,
 	}
 }
 
-// registerRequest represents the request body for creating a user
 type registerRequest struct {
 	Name     string `json:"name" binding:"required" example:"John Doe"`
 	Email    string `json:"email" binding:"required,email" example:"test@example.com"`
@@ -30,7 +27,7 @@ type registerRequest struct {
 // Register godoc
 //
 //	@Summary		Register a new user
-//	@Description	create a new user account with default role "cashier"
+//	@Description	create a new user account with default role "customer"
 //	@Tags			Users
 //	@Accept			json
 //	@Produce		json
@@ -64,4 +61,97 @@ func (uh *UserHandler) Register(ctx *gin.Context) {
 	rsp := newUserResponse(&user)
 
 	handleSuccess(ctx, rsp)
+}
+
+type updateUserRequest struct {
+	Name     string          `json:"name" binding:"omitempty,required" example:"John Doe"`
+	Email    string          `json:"email" binding:"omitempty,required,email" example:"test@example.com"`
+	Password string          `json:"password" binding:"omitempty,required,min=8" example:"12345678"`
+	Role     domain.UserRole `json:"role" binding:"omitempty,required,user_role" example:"admin"`
+}
+
+// UpdateUser godoc
+//
+//	@Summary		Update a user
+//	@Description	Update a user's name, email, password, or role by id
+//	@Tags			Users
+//	@Accept			json
+//	@Produce		json
+//	@Param			id					path		uint64				true	"User ID"
+//	@Param			updateUserRequest	body		updateUserRequest	true	"Update user request"
+//	@Success		200					{object}	userResponse		"User updated"
+//	@Failure		400					{object}	errorResponse		"Validation error"
+//	@Failure		401					{object}	errorResponse		"Unauthorized error"
+//	@Failure		403					{object}	errorResponse		"Forbidden error"
+//	@Failure		404					{object}	errorResponse		"Data not found error"
+//	@Failure		500					{object}	errorResponse		"Internal server error"
+//	@Router			/users/{id} [put]
+//	@Security		BearerAuth
+func (uh *UserHandler) UpdateUser(ctx *gin.Context) {
+	var req updateUserRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		validationError(ctx, err)
+		return
+	}
+
+	idStr := ctx.Param("id")
+	id, err := stringToUint64(idStr)
+	if err != nil {
+		validationError(ctx, err)
+		return
+	}
+
+	user := domain.User{
+		ID:       id,
+		Name:     req.Name,
+		Email:    req.Email,
+		Password: req.Password,
+		Role:     req.Role,
+	}
+
+	_, err = uh.svc.UpdateUser(ctx, &user)
+	if err != nil {
+		handleError(ctx, err)
+		return
+	}
+
+	rsp := newUserResponse(&user)
+
+	handleSuccess(ctx, rsp)
+}
+
+type deleteUserRequest struct {
+	ID uint64 `uri:"id" binding:"required,min=1" example:"1"`
+}
+
+// DeleteUser godoc
+//
+//	@Summary		Delete a user
+//	@Description	Delete a user by id
+//	@Tags			Users
+//	@Accept			json
+//	@Produce		json
+//	@Param			id	path		uint64			true	"User ID"
+//	@Success		200	{object}	response		"User deleted"
+//	@Failure		400	{object}	errorResponse	"Validation error"
+//	@Failure		401	{object}	errorResponse	"Unauthorized error"
+//	@Failure		403	{object}	errorResponse	"Forbidden error"
+//	@Failure		404	{object}	errorResponse	"Data not found error"
+//	@Failure		500	{object}	errorResponse	"Internal server error"
+//	@Router			/users/{id} [delete]
+//	@Security		BearerAuth
+func (uh *UserHandler) DeleteUser(ctx *gin.Context) {
+	var req deleteUserRequest
+	if err := ctx.ShouldBindUri(&req); err != nil {
+		validationError(ctx, err)
+		return
+	}
+
+	err := uh.svc.DeleteUser(ctx, req.ID)
+	if err != nil {
+		handleError(ctx, err)
+		return
+	}
+
+	handleSuccess(ctx, nil)
 }

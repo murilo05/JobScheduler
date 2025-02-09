@@ -51,11 +51,11 @@ func main() {
 	// Dependency injection
 	// User
 	userRepo := repository.NewUserRepository(db)
-	userService := service.NewUserService(userRepo)
+	userService := service.NewUserService(userRepo, logger)
 	userHandler := httpHandler.NewUserHandler(userService)
 
 	// Auth
-	authService := service.NewAuthService(userRepo, token)
+	authService := service.NewAuthService(userRepo, token, logger)
 	authHandler := httpHandler.NewAuthHandler(authService)
 
 	// Init router

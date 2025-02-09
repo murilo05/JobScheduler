@@ -10,10 +10,6 @@ import (
 	"github.com/murilo05/JobScheduler/internal/core/ports"
 )
 
-/**
- * PasetoToken implements port.TokenService interface
- * and provides an access to the paseto library
- */
 type PasetoToken struct {
 	token    *paseto.Token
 	key      *paseto.V4SymmetricKey
@@ -21,7 +17,6 @@ type PasetoToken struct {
 	duration time.Duration
 }
 
-// New creates a new paseto instance
 func New(config *config.Token) (ports.TokenService, error) {
 	durationStr := config.Duration
 	duration, err := time.ParseDuration(durationStr)
@@ -41,7 +36,6 @@ func New(config *config.Token) (ports.TokenService, error) {
 	}, nil
 }
 
-// CreateToken creates a new paseto token
 func (pt *PasetoToken) CreateToken(user *domain.User) (string, error) {
 	id, err := uuid.NewRandom()
 	if err != nil {
@@ -71,7 +65,6 @@ func (pt *PasetoToken) CreateToken(user *domain.User) (string, error) {
 	return token, nil
 }
 
-// VerifyToken verifies the paseto token
 func (pt *PasetoToken) VerifyToken(token string) (*domain.TokenPayload, error) {
 	var payload *domain.TokenPayload
 

@@ -6,16 +6,16 @@ import (
 	"github.com/murilo05/JobScheduler/internal/core/domain"
 )
 
-// UserRepository is an interface for interacting with user-related data
 type UserRepository interface {
-	// CreateUser inserts a new user into the database
 	CreateUser(ctx context.Context, user *domain.User) (*domain.User, error)
-	// GetUserByEmail selects a user by email
+	GetUserByID(ctx context.Context, id uint64) (*domain.User, error)
 	GetUserByEmail(ctx context.Context, email string) (*domain.User, error)
+	UpdateUser(ctx context.Context, user *domain.User) (*domain.User, error)
+	DeleteUser(ctx context.Context, id uint64) error
 }
 
-// UserService is an interface for interacting with user-related business logic
 type UserService interface {
-	// Register registers a new user
 	Register(ctx context.Context, user *domain.User) (*domain.User, error)
+	UpdateUser(ctx context.Context, user *domain.User) (*domain.User, error)
+	DeleteUser(ctx context.Context, id uint64) error
 }

@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/Masterminds/squirrel"
@@ -46,8 +47,12 @@ func New(ctx context.Context, config *config.DB) (*DB, error) {
 }
 
 func (db *DB) ErrorCode(err error) string {
-	pgErr := err.(*pgconn.PgError)
-	return pgErr.Code
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) {
+		return pgErr.Code
+	} else {
+		return fmt.Sprintf("unexpected error: %s", err)
+	}
 }
 
 func (db *DB) Close() {

@@ -6,28 +6,25 @@ import (
 	"github.com/murilo05/JobScheduler/internal/core/domain"
 	"github.com/murilo05/JobScheduler/internal/core/ports"
 	"github.com/murilo05/JobScheduler/internal/core/util"
+	"go.uber.org/zap"
 )
 
-/**
- * UserService implements port.UserService interface
- * and provides an access to the user repository
- * and cache service
- */
 type UserService struct {
-	repo ports.UserRepository
+	repo   ports.UserRepository
+	logger *zap.SugaredLogger
 }
 
-// NewUserService creates a new user service instance
-func NewUserService(repo ports.UserRepository) *UserService {
+func NewUserService(repo ports.UserRepository, logger *zap.SugaredLogger) *UserService {
 	return &UserService{
 		repo,
+		logger,
 	}
 }
 
-// Register creates a new user
 func (us *UserService) Register(ctx context.Context, user *domain.User) (*domain.User, error) {
 	hashedPassword, err := util.HashPassword(user.Password)
 	if err != nil {
+		us.logger.Error("Failed to hash password: ", err)
 		return nil, domain.ErrInternal
 	}
 
@@ -36,10 +33,71 @@ func (us *UserService) Register(ctx context.Context, user *domain.User) (*domain
 	user, err = us.repo.CreateUser(ctx, user)
 	if err != nil {
 		if err == domain.ErrConflictingData {
+			us.logger.Error("data already exist: ", err)
+			return nil, err
+		}
+		us.logger.Error("failed to create user: ", err)
+		return nil, domain.ErrInternal
+	}
+
+	return user, nil
+}
+
+func (us *UserService) UpdateUser(ctx context.Context, user *domain.User) (*domain.User, error) {
+	existingUser, err := us.repo.GetUserByID(ctx, user.ID)
+	if err != nil {
+		if err == domain.ErrDataNotFound {
+			us.logger.Error("user not found")
+			return nil, err
+		}
+		us.logger.Error("internal error: %s", err)
+		return nil, domain.ErrInternal
+	}
+
+	emptyData := user.Name == "" &&
+		user.Email == "" &&
+		user.Password == "" &&
+		user.Role == ""
+	sameData := existingUser.Name == user.Name &&
+		existingUser.Email == user.Email &&
+		existingUser.Role == user.Role
+	if emptyData || sameData {
+		return nil, domain.ErrNoUpdatedData
+	}
+
+	var hashedPassword string
+
+	if user.Password != "" {
+		hashedPassword, err = util.HashPassword(user.Password)
+		if err != nil {
+			us.logger.Error("auth failed: %s", err)
+			return nil, domain.ErrInternal
+		}
+	}
+
+	user.Password = hashedPassword
+
+	_, err = us.repo.UpdateUser(ctx, user)
+	if err != nil {
+		if err == domain.ErrConflictingData {
+			us.logger.Error("data already exist")
 			return nil, err
 		}
 		return nil, domain.ErrInternal
 	}
 
 	return user, nil
+}
+
+func (us *UserService) DeleteUser(ctx context.Context, id uint64) error {
+	_, err := us.repo.GetUserByID(ctx, id)
+	if err != nil {
+		if err == domain.ErrDataNotFound {
+			us.logger.Error("user not found")
+			return err
+		}
+		return domain.ErrInternal
+	}
+
+	return us.repo.DeleteUser(ctx, id)
 }

@@ -5,19 +5,16 @@ import (
 	"github.com/murilo05/JobScheduler/internal/core/ports"
 )
 
-// AuthHandler represents the HTTP handler for authentication-related requests
 type AuthHandler struct {
 	svc ports.AuthService
 }
 
-// NewAuthHandler creates a new AuthHandler instance
 func NewAuthHandler(svc ports.AuthService) *AuthHandler {
 	return &AuthHandler{
 		svc,
 	}
 }
 
-// loginRequest represents the request body for logging in a user
 type loginRequest struct {
 	Email    string `json:"email" binding:"required,email" example:"test@example.com"`
 	Password string `json:"password" binding:"required,min=8" example:"12345678" minLength:"8"`
