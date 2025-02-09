@@ -55,11 +55,11 @@ func NewRouter(
 
 			authUser := user.Group("/").Use(authMiddleware(token))
 			{
-				//authUser.GET("/", userHandler.ListUsers)
-				//authUser.GET("/:id", userHandler.GetUser)
-
 				admin := authUser.Use(adminMiddleware())
 				{
+					authUser.GET("/", userHandler.ListUsers)
+					authUser.GET("/:id", userHandler.GetUser)
+
 					admin.PUT("/:id", userHandler.UpdateUser)
 					admin.DELETE("/:id", userHandler.DeleteUser)
 				}

@@ -2,7 +2,6 @@ package repository
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	sq "github.com/Masterminds/squirrel"
@@ -115,13 +114,54 @@ func (ur *UserRepository) GetUserByEmail(ctx context.Context, email string) (*do
 	return &user, nil
 }
 
+func (ur *UserRepository) ListUsers(ctx context.Context, skip, limit uint64) ([]domain.User, error) {
+	var user domain.User
+	var users []domain.User
+
+	query := ur.db.QueryBuilder.Select("*").
+		From("public.user").
+		OrderBy("id").
+		Limit(limit).
+		Offset(skip * limit)
+
+	sql, args, err := query.ToSql()
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := ur.db.Query(ctx, sql, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		err := rows.Scan(
+			&user.ID,
+			&user.Name,
+			&user.Email,
+			&user.Password,
+			&user.Role,
+			&user.CreatedAt,
+			&user.UpdatedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		users = append(users, user)
+	}
+
+	return users, nil
+}
+
 func (ur *UserRepository) UpdateUser(ctx context.Context, user *domain.User) (*domain.User, error) {
 	name := nullString(user.Name)
 	email := nullString(user.Email)
 	password := nullString(user.Password)
 	role := nullString(string(user.Role))
 
-	query := ur.db.QueryBuilder.Update("users").
+	query := ur.db.QueryBuilder.Update("public.user").
 		Set("name", sq.Expr("COALESCE(?, name)", name)).
 		Set("email", sq.Expr("COALESCE(?, email)", email)).
 		Set("password", sq.Expr("COALESCE(?, password)", password)).
@@ -160,13 +200,11 @@ func (ur *UserRepository) DeleteUser(ctx context.Context, id uint64) error {
 
 	sql, args, err := query.ToSql()
 	if err != nil {
-		fmt.Print("aa", err)
 		return err
 	}
 
 	_, err = ur.db.Exec(ctx, sql, args...)
 	if err != nil {
-		fmt.Print("aaxxx", err)
 		return err
 	}
 

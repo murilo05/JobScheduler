@@ -1,7 +1,6 @@
 package http
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -56,7 +55,6 @@ func authMiddleware(token ports.TokenService) gin.HandlerFunc {
 func adminMiddleware() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		payload := getAuthPayload(ctx, authorizationPayloadKey)
-		fmt.Println("Payload", payload)
 
 		isAdmin := payload.Role == domain.Admin
 		if !isAdmin {

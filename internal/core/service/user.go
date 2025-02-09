@@ -43,6 +43,34 @@ func (us *UserService) Register(ctx context.Context, user *domain.User) (*domain
 	return user, nil
 }
 
+func (us *UserService) GetUser(ctx context.Context, id uint64) (*domain.User, error) {
+	var user *domain.User
+
+	user, err := us.repo.GetUserByID(ctx, id)
+	if err != nil {
+		if err == domain.ErrDataNotFound {
+			us.logger.Error("user not found")
+			return nil, err
+		}
+		us.logger.Error("internal error: %s", err)
+		return nil, domain.ErrInternal
+	}
+
+	return user, nil
+}
+
+func (us *UserService) ListUsers(ctx context.Context, skip, limit uint64) ([]domain.User, error) {
+	var users []domain.User
+
+	users, err := us.repo.ListUsers(ctx, skip, limit)
+	if err != nil {
+		us.logger.Error("internal error: %s", err)
+		return nil, domain.ErrInternal
+	}
+
+	return users, nil
+}
+
 func (us *UserService) UpdateUser(ctx context.Context, user *domain.User) (*domain.User, error) {
 	existingUser, err := us.repo.GetUserByID(ctx, user.ID)
 	if err != nil {
