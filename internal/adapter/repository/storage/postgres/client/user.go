@@ -1,27 +1,25 @@
-package repository
+package client
 
 import (
 	"context"
 	"time"
 
 	sq "github.com/Masterminds/squirrel"
-	"github.com/jackc/pgx/v5"
-	"github.com/murilo05/JobScheduler/internal/adapter/storage/postgres"
+	"github.com/jackc/pgx"
+	"github.com/murilo05/JobScheduler/internal/adapter/repository/storage"
+
 	"github.com/murilo05/JobScheduler/internal/core/domain"
 )
 
-type UserRepository struct {
-	db *postgres.DB
+type Postgres struct {
+	db *storage.PG
+	_  storage.UserStorage
 }
 
-func NewUserRepository(db *postgres.DB) *UserRepository {
-	return &UserRepository{
-		db,
-	}
-}
+var _ storage.UserStorage = &Postgres{}
 
-func (ur *UserRepository) CreateUser(ctx context.Context, user *domain.User) (*domain.User, error) {
-	query := ur.db.QueryBuilder.Insert("public.user").
+func (pg *Postgres) Save(ctx context.Context, user *domain.User) (*domain.User, error) {
+	query := pg.db.QueryBuilder.Insert("public.user").
 		Columns("name", "email", "password", "role", "created_at", "updated_at").
 		Values(user.Name, user.Email, user.Password, "customer", time.Now(), time.Now()).
 		Suffix("RETURNING *")
@@ -31,7 +29,7 @@ func (ur *UserRepository) CreateUser(ctx context.Context, user *domain.User) (*d
 		return nil, err
 	}
 
-	err = ur.db.QueryRow(ctx, sql, args...).Scan(
+	err = pg.db.QueryRow(ctx, sql, args...).Scan(
 		&user.ID,
 		&user.Name,
 		&user.Email,
@@ -41,7 +39,7 @@ func (ur *UserRepository) CreateUser(ctx context.Context, user *domain.User) (*d
 		&user.UpdatedAt,
 	)
 	if err != nil {
-		if errCode := ur.db.ErrorCode(err); errCode == "23505" {
+		if errCode := pg.db.ErrorCode(err); errCode == "23505" {
 			return nil, domain.ErrConflictingData
 		}
 		return nil, err
@@ -50,10 +48,10 @@ func (ur *UserRepository) CreateUser(ctx context.Context, user *domain.User) (*d
 	return user, nil
 }
 
-func (ur *UserRepository) GetUserByID(ctx context.Context, id uint64) (*domain.User, error) {
+func (pg *Postgres) Get(ctx context.Context, id uint64) (*domain.User, error) {
 	var user domain.User
 
-	query := ur.db.QueryBuilder.Select("*").
+	query := pg.db.QueryBuilder.Select("*").
 		From("public.user").
 		Where(sq.Eq{"id": id}).
 		Limit(1)
@@ -63,7 +61,7 @@ func (ur *UserRepository) GetUserByID(ctx context.Context, id uint64) (*domain.U
 		return nil, err
 	}
 
-	err = ur.db.QueryRow(ctx, sql, args...).Scan(
+	err = pg.db.QueryRow(ctx, sql, args...).Scan(
 		&user.ID,
 		&user.Name,
 		&user.Email,
@@ -82,10 +80,10 @@ func (ur *UserRepository) GetUserByID(ctx context.Context, id uint64) (*domain.U
 	return &user, nil
 }
 
-func (ur *UserRepository) GetUserByEmail(ctx context.Context, email string) (*domain.User, error) {
+func (pg *Postgres) GetByEmail(ctx context.Context, email string) (*domain.User, error) {
 	var user domain.User
 
-	query := ur.db.QueryBuilder.Select("*").
+	query := pg.db.QueryBuilder.Select("*").
 		From("public.user").
 		Where(sq.Eq{"email": email}).
 		Limit(1)
@@ -95,7 +93,7 @@ func (ur *UserRepository) GetUserByEmail(ctx context.Context, email string) (*do
 		return nil, err
 	}
 
-	err = ur.db.QueryRow(ctx, sql, args...).Scan(
+	err = pg.db.QueryRow(ctx, sql, args...).Scan(
 		&user.ID,
 		&user.Name,
 		&user.Email,
@@ -114,11 +112,11 @@ func (ur *UserRepository) GetUserByEmail(ctx context.Context, email string) (*do
 	return &user, nil
 }
 
-func (ur *UserRepository) ListUsers(ctx context.Context, skip, limit uint64) ([]domain.User, error) {
+func (pg *Postgres) List(ctx context.Context, skip, limit uint64) ([]domain.User, error) {
 	var user domain.User
 	var users []domain.User
 
-	query := ur.db.QueryBuilder.Select("*").
+	query := pg.db.QueryBuilder.Select("*").
 		From("public.user").
 		OrderBy("id").
 		Limit(limit).
@@ -129,7 +127,7 @@ func (ur *UserRepository) ListUsers(ctx context.Context, skip, limit uint64) ([]
 		return nil, err
 	}
 
-	rows, err := ur.db.Query(ctx, sql, args...)
+	rows, err := pg.db.Query(ctx, sql, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -155,13 +153,13 @@ func (ur *UserRepository) ListUsers(ctx context.Context, skip, limit uint64) ([]
 	return users, nil
 }
 
-func (ur *UserRepository) UpdateUser(ctx context.Context, user *domain.User) (*domain.User, error) {
+func (pg *Postgres) Update(ctx context.Context, user *domain.User) (*domain.User, error) {
 	name := nullString(user.Name)
 	email := nullString(user.Email)
 	password := nullString(user.Password)
 	role := nullString(string(user.Role))
 
-	query := ur.db.QueryBuilder.Update("public.user").
+	query := pg.db.QueryBuilder.Update("public.user").
 		Set("name", sq.Expr("COALESCE(?, name)", name)).
 		Set("email", sq.Expr("COALESCE(?, email)", email)).
 		Set("password", sq.Expr("COALESCE(?, password)", password)).
@@ -175,7 +173,7 @@ func (ur *UserRepository) UpdateUser(ctx context.Context, user *domain.User) (*d
 		return nil, err
 	}
 
-	err = ur.db.QueryRow(ctx, sql, args...).Scan(
+	err = pg.db.QueryRow(ctx, sql, args...).Scan(
 		&user.ID,
 		&user.Name,
 		&user.Email,
@@ -185,7 +183,7 @@ func (ur *UserRepository) UpdateUser(ctx context.Context, user *domain.User) (*d
 		&user.UpdatedAt,
 	)
 	if err != nil {
-		if errCode := ur.db.ErrorCode(err); errCode == "23505" {
+		if errCode := pg.db.ErrorCode(err); errCode == "23505" {
 			return nil, domain.ErrConflictingData
 		}
 		return nil, err
@@ -194,8 +192,8 @@ func (ur *UserRepository) UpdateUser(ctx context.Context, user *domain.User) (*d
 	return user, nil
 }
 
-func (ur *UserRepository) DeleteUser(ctx context.Context, id uint64) error {
-	query := ur.db.QueryBuilder.Delete("public.user").
+func (pg *Postgres) Delete(ctx context.Context, id uint64) error {
+	query := pg.db.QueryBuilder.Delete("public.user").
 		Where(sq.Eq{"id": id})
 
 	sql, args, err := query.ToSql()
@@ -203,7 +201,7 @@ func (ur *UserRepository) DeleteUser(ctx context.Context, id uint64) error {
 		return err
 	}
 
-	_, err = ur.db.Exec(ctx, sql, args...)
+	_, err = pg.db.Exec(ctx, sql, args...)
 	if err != nil {
 		return err
 	}

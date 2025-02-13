@@ -52,8 +52,14 @@ func (uh *UserHandler) Register(ctx *gin.Context) {
 		Password: req.Password,
 	}
 
-	_, err := uh.svc.Register(ctx, &user)
+	_, errChan, err := uh.svc.Register(ctx, &user)
 	if err != nil {
+		handleError(ctx, err)
+		return
+	}
+
+	if emailErr := <-errChan; emailErr != nil {
+		//TRATAR ERRO EMAIL COM MENSAGEM ERRORS.NEW
 		handleError(ctx, err)
 		return
 	}

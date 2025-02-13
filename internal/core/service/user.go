@@ -10,22 +10,22 @@ import (
 )
 
 type UserService struct {
-	repo   ports.UserRepository
+	repo   ports.Repository
 	logger *zap.SugaredLogger
 }
 
-func NewUserService(repo ports.UserRepository, logger *zap.SugaredLogger) *UserService {
+func NewUserService(repo ports.Repository, logger *zap.SugaredLogger) *UserService {
 	return &UserService{
 		repo,
 		logger,
 	}
 }
 
-func (us *UserService) Register(ctx context.Context, user *domain.User) (*domain.User, error) {
+func (us *UserService) Register(ctx context.Context, user *domain.User) (*domain.User, <-chan error, error) {
 	hashedPassword, err := util.HashPassword(user.Password)
 	if err != nil {
 		us.logger.Error("Failed to hash password: ", err)
-		return nil, domain.ErrInternal
+		return nil, nil, domain.ErrInternal
 	}
 
 	user.Password = hashedPassword
@@ -34,13 +34,22 @@ func (us *UserService) Register(ctx context.Context, user *domain.User) (*domain
 	if err != nil {
 		if err == domain.ErrConflictingData {
 			us.logger.Error("data already exist: ", err)
-			return nil, err
+			return nil, nil, err
 		}
 		us.logger.Error("failed to create user: ", err)
-		return nil, domain.ErrInternal
+		return nil, nil, domain.ErrInternal
 	}
 
-	return user, nil
+	token := "some-verification-token"
+
+	errChan := make(chan error, 1)
+
+	go func() {
+		err := us.repo.SendEmailValidationToSQS(ctx, user.Email, token)
+		errChan <- err
+	}()
+
+	return user, errChan, nil
 }
 
 func (us *UserService) GetUser(ctx context.Context, id uint64) (*domain.User, error) {

@@ -59,7 +59,6 @@ func NewRouter(
 				{
 					authUser.GET("/", userHandler.ListUsers)
 					authUser.GET("/:id", userHandler.GetUser)
-
 					admin.PUT("/:id", userHandler.UpdateUser)
 					admin.DELETE("/:id", userHandler.DeleteUser)
 				}

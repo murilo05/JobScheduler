@@ -10,12 +10,12 @@ import (
 )
 
 type AuthService struct {
-	repo   ports.UserRepository
+	repo   ports.Repository
 	ts     ports.TokenService
 	logger *zap.SugaredLogger
 }
 
-func NewAuthService(repo ports.UserRepository, ts ports.TokenService, logger *zap.SugaredLogger) *AuthService {
+func NewAuthService(repo ports.Repository, ts ports.TokenService, logger *zap.SugaredLogger) *AuthService {
 	return &AuthService{
 		repo,
 		ts,

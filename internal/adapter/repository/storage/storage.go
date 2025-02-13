@@ -1,23 +1,49 @@
-package postgres
+package storage
 
 import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/murilo05/JobScheduler/internal/adapter/config"
+	"go.uber.org/zap"
 )
 
-type DB struct {
+type Storage struct {
+	UserStorage
+	PG
+	zap.SugaredLogger
+}
+
+var _ UserStorage = &Storage{}
+
+type PG struct {
 	*pgxpool.Pool
 	QueryBuilder *squirrel.StatementBuilderType
 	url          string
 }
 
-func New(ctx context.Context, config *config.DB) (*DB, error) {
+func NewStorage(ctx context.Context, configPG *config.DB, logger *zap.SugaredLogger) (*Storage, error) {
+	pg, err := NewPostgres(ctx, configPG)
+	if err != nil {
+		logger.Error("Error initializing database connection: %s", err)
+		os.Exit(1)
+	}
+
+	logger.Info("Successfully connected to the database", "db", configPG.Connection)
+
+	return &Storage{
+		PG:            *pg,
+		SugaredLogger: *logger,
+	}, err
+
+}
+
+func NewPostgres(ctx context.Context, config *config.DB) (*PG, error) {
 	url := fmt.Sprintf("%s://%s:%s@%s:%s/%s?sslmode=disable",
 		config.Connection,
 		config.User,
@@ -39,14 +65,14 @@ func New(ctx context.Context, config *config.DB) (*DB, error) {
 
 	psql := squirrel.StatementBuilder.PlaceholderFormat(squirrel.Dollar)
 
-	return &DB{
+	return &PG{
 		db,
 		&psql,
 		url,
 	}, nil
 }
 
-func (db *DB) ErrorCode(err error) string {
+func (db *PG) ErrorCode(err error) string {
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) {
 		return pgErr.Code
@@ -55,6 +81,6 @@ func (db *DB) ErrorCode(err error) string {
 	}
 }
 
-func (db *DB) Close() {
+func (db *PG) Close() {
 	db.Pool.Close()
 }
