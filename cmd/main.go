@@ -11,7 +11,7 @@ import (
 	"github.com/murilo05/JobScheduler/internal/adapter/handler/http"
 	httpHandler "github.com/murilo05/JobScheduler/internal/adapter/handler/http"
 	"github.com/murilo05/JobScheduler/internal/adapter/repository"
-	"github.com/murilo05/JobScheduler/internal/adapter/repository/storage"
+	"github.com/murilo05/JobScheduler/internal/adapter/repository/storage/postgres/client"
 	"github.com/murilo05/JobScheduler/internal/core/service"
 	"go.uber.org/zap"
 )
@@ -42,7 +42,8 @@ func main() {
 
 	// Dependency injection
 	// User
-	storage, err := storage.NewStorage(ctx, config.DB, logger)
+	storage, err := client.NewStorage(ctx, config.DB, logger)
+	fmt.Println(storage, "storage")
 	userRepo := repository.NewRepository(storage, logger)
 	userService := service.NewUserService(userRepo, logger)
 	userHandler := httpHandler.NewUserHandler(userService)

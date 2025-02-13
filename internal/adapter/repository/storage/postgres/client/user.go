@@ -5,23 +5,19 @@ import (
 	"time"
 
 	sq "github.com/Masterminds/squirrel"
-	"github.com/jackc/pgx"
+	"github.com/jackc/pgx/v5"
 	"github.com/murilo05/JobScheduler/internal/adapter/repository/storage"
 
 	"github.com/murilo05/JobScheduler/internal/core/domain"
 )
 
-type Postgres struct {
-	db *storage.PG
-	_  storage.UserStorage
-}
+var _ storage.UserStorage = &UserStorage{}
 
-var _ storage.UserStorage = &Postgres{}
+func (pg *UserStorage) Save(ctx context.Context, user *domain.User) (*domain.User, error) {
 
-func (pg *Postgres) Save(ctx context.Context, user *domain.User) (*domain.User, error) {
 	query := pg.db.QueryBuilder.Insert("public.user").
-		Columns("name", "email", "password", "role", "created_at", "updated_at").
-		Values(user.Name, user.Email, user.Password, "customer", time.Now(), time.Now()).
+		Columns("name", "email", "password", "role", "is_verified", "created_at", "updated_at").
+		Values(user.Name, user.Email, user.Password, "customer", false, time.Now(), time.Now()).
 		Suffix("RETURNING *")
 
 	sql, args, err := query.ToSql()
@@ -35,6 +31,7 @@ func (pg *Postgres) Save(ctx context.Context, user *domain.User) (*domain.User, 
 		&user.Email,
 		&user.Password,
 		&user.Role,
+		&user.Verified,
 		&user.CreatedAt,
 		&user.UpdatedAt,
 	)
@@ -48,7 +45,7 @@ func (pg *Postgres) Save(ctx context.Context, user *domain.User) (*domain.User, 
 	return user, nil
 }
 
-func (pg *Postgres) Get(ctx context.Context, id uint64) (*domain.User, error) {
+func (pg *UserStorage) Get(ctx context.Context, id uint64) (*domain.User, error) {
 	var user domain.User
 
 	query := pg.db.QueryBuilder.Select("*").
@@ -67,6 +64,7 @@ func (pg *Postgres) Get(ctx context.Context, id uint64) (*domain.User, error) {
 		&user.Email,
 		&user.Password,
 		&user.Role,
+		&user.Verified,
 		&user.CreatedAt,
 		&user.UpdatedAt,
 	)
@@ -80,7 +78,7 @@ func (pg *Postgres) Get(ctx context.Context, id uint64) (*domain.User, error) {
 	return &user, nil
 }
 
-func (pg *Postgres) GetByEmail(ctx context.Context, email string) (*domain.User, error) {
+func (pg *UserStorage) GetByEmail(ctx context.Context, email string) (*domain.User, error) {
 	var user domain.User
 
 	query := pg.db.QueryBuilder.Select("*").
@@ -99,6 +97,7 @@ func (pg *Postgres) GetByEmail(ctx context.Context, email string) (*domain.User,
 		&user.Email,
 		&user.Password,
 		&user.Role,
+		&user.Verified,
 		&user.CreatedAt,
 		&user.UpdatedAt,
 	)
@@ -112,7 +111,7 @@ func (pg *Postgres) GetByEmail(ctx context.Context, email string) (*domain.User,
 	return &user, nil
 }
 
-func (pg *Postgres) List(ctx context.Context, skip, limit uint64) ([]domain.User, error) {
+func (pg *UserStorage) List(ctx context.Context, skip, limit uint64) ([]domain.User, error) {
 	var user domain.User
 	var users []domain.User
 
@@ -140,6 +139,7 @@ func (pg *Postgres) List(ctx context.Context, skip, limit uint64) ([]domain.User
 			&user.Email,
 			&user.Password,
 			&user.Role,
+			&user.Verified,
 			&user.CreatedAt,
 			&user.UpdatedAt,
 		)
@@ -153,7 +153,7 @@ func (pg *Postgres) List(ctx context.Context, skip, limit uint64) ([]domain.User
 	return users, nil
 }
 
-func (pg *Postgres) Update(ctx context.Context, user *domain.User) (*domain.User, error) {
+func (pg *UserStorage) Update(ctx context.Context, user *domain.User) (*domain.User, error) {
 	name := nullString(user.Name)
 	email := nullString(user.Email)
 	password := nullString(user.Password)
@@ -192,7 +192,7 @@ func (pg *Postgres) Update(ctx context.Context, user *domain.User) (*domain.User
 	return user, nil
 }
 
-func (pg *Postgres) Delete(ctx context.Context, id uint64) error {
+func (pg *UserStorage) Delete(ctx context.Context, id uint64) error {
 	query := pg.db.QueryBuilder.Delete("public.user").
 		Where(sq.Eq{"id": id})
 

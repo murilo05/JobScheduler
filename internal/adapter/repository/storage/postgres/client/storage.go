@@ -1,4 +1,4 @@
-package storage
+package client
 
 import (
 	"context"
@@ -13,13 +13,10 @@ import (
 	"go.uber.org/zap"
 )
 
-type Storage struct {
-	UserStorage
-	PG
+type UserStorage struct {
+	db PG
 	zap.SugaredLogger
 }
-
-var _ UserStorage = &Storage{}
 
 type PG struct {
 	*pgxpool.Pool
@@ -27,7 +24,7 @@ type PG struct {
 	url          string
 }
 
-func NewStorage(ctx context.Context, configPG *config.DB, logger *zap.SugaredLogger) (*Storage, error) {
+func NewStorage(ctx context.Context, configPG *config.DB, logger *zap.SugaredLogger) (*UserStorage, error) {
 	pg, err := NewPostgres(ctx, configPG)
 	if err != nil {
 		logger.Error("Error initializing database connection: %s", err)
@@ -36,8 +33,8 @@ func NewStorage(ctx context.Context, configPG *config.DB, logger *zap.SugaredLog
 
 	logger.Info("Successfully connected to the database", "db", configPG.Connection)
 
-	return &Storage{
-		PG:            *pg,
+	return &UserStorage{
+		db:            *pg,
 		SugaredLogger: *logger,
 	}, err
 
