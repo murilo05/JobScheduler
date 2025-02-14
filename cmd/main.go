@@ -8,10 +8,10 @@ import (
 
 	paseto "github.com/murilo05/JobScheduler/internal/adapter/auth"
 	"github.com/murilo05/JobScheduler/internal/adapter/config"
-	"github.com/murilo05/JobScheduler/internal/adapter/handler/http"
 	httpHandler "github.com/murilo05/JobScheduler/internal/adapter/handler/http"
 	"github.com/murilo05/JobScheduler/internal/adapter/repository"
-	"github.com/murilo05/JobScheduler/internal/adapter/repository/storage/postgres/client"
+	"github.com/murilo05/JobScheduler/internal/adapter/repository/storage/aws"
+	postgres "github.com/murilo05/JobScheduler/internal/adapter/repository/storage/postgres/client"
 	"github.com/murilo05/JobScheduler/internal/core/service"
 	"go.uber.org/zap"
 )
@@ -41,10 +41,11 @@ func main() {
 	}
 
 	// Dependency injection
+	database := postgres.NewDatabase(ctx, config.DB, logger)
+	aws := aws.NewAWS(ctx, logger)
+
 	// User
-	storage, err := client.NewStorage(ctx, config.DB, logger)
-	fmt.Println(storage, "storage")
-	userRepo := repository.NewRepository(storage, logger)
+	userRepo := repository.NewRepository(database, aws, logger)
 	userService := service.NewUserService(userRepo, logger)
 	userHandler := httpHandler.NewUserHandler(userService)
 
@@ -53,7 +54,7 @@ func main() {
 	authHandler := httpHandler.NewAuthHandler(authService)
 
 	// Init router
-	router, err := http.NewRouter(
+	router, err := httpHandler.NewRouter(
 		config.HTTP,
 		token,
 		*userHandler,

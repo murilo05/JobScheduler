@@ -11,9 +11,9 @@ import (
 	"github.com/murilo05/JobScheduler/internal/core/domain"
 )
 
-var _ storage.UserStorage = &UserStorage{}
+var _ storage.Postgres = &Postgres{}
 
-func (pg *UserStorage) Save(ctx context.Context, user *domain.User) (*domain.User, error) {
+func (pg *Postgres) Save(ctx context.Context, user *domain.User) (*domain.User, error) {
 
 	query := pg.db.QueryBuilder.Insert("public.user").
 		Columns("name", "email", "password", "role", "is_verified", "created_at", "updated_at").
@@ -45,7 +45,7 @@ func (pg *UserStorage) Save(ctx context.Context, user *domain.User) (*domain.Use
 	return user, nil
 }
 
-func (pg *UserStorage) Get(ctx context.Context, id uint64) (*domain.User, error) {
+func (pg *Postgres) Get(ctx context.Context, id uint64) (*domain.User, error) {
 	var user domain.User
 
 	query := pg.db.QueryBuilder.Select("*").
@@ -78,7 +78,7 @@ func (pg *UserStorage) Get(ctx context.Context, id uint64) (*domain.User, error)
 	return &user, nil
 }
 
-func (pg *UserStorage) GetByEmail(ctx context.Context, email string) (*domain.User, error) {
+func (pg *Postgres) GetByEmail(ctx context.Context, email string) (*domain.User, error) {
 	var user domain.User
 
 	query := pg.db.QueryBuilder.Select("*").
@@ -111,7 +111,7 @@ func (pg *UserStorage) GetByEmail(ctx context.Context, email string) (*domain.Us
 	return &user, nil
 }
 
-func (pg *UserStorage) List(ctx context.Context, skip, limit uint64) ([]domain.User, error) {
+func (pg *Postgres) List(ctx context.Context, skip, limit uint64) ([]domain.User, error) {
 	var user domain.User
 	var users []domain.User
 
@@ -153,7 +153,7 @@ func (pg *UserStorage) List(ctx context.Context, skip, limit uint64) ([]domain.U
 	return users, nil
 }
 
-func (pg *UserStorage) Update(ctx context.Context, user *domain.User) (*domain.User, error) {
+func (pg *Postgres) Update(ctx context.Context, user *domain.User) (*domain.User, error) {
 	name := nullString(user.Name)
 	email := nullString(user.Email)
 	password := nullString(user.Password)
@@ -192,7 +192,7 @@ func (pg *UserStorage) Update(ctx context.Context, user *domain.User) (*domain.U
 	return user, nil
 }
 
-func (pg *UserStorage) Delete(ctx context.Context, id uint64) error {
+func (pg *Postgres) Delete(ctx context.Context, id uint64) error {
 	query := pg.db.QueryBuilder.Delete("public.user").
 		Where(sq.Eq{"id": id})
 
